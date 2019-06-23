@@ -3,6 +3,9 @@ package main
 import (
 	"encoding/json"
 	"fmt"
+	"strings"
+
+	"github.com/urandom/text-summary/summarize"
 
 	"github.com/aws/aws-lambda-go/events"
 	"github.com/aws/aws-lambda-go/lambda"
@@ -12,28 +15,45 @@ import (
 // AWS Lambda Proxy Request functionality (default behavior)
 //
 // https://serverless.com/framework/docs/providers/aws/events/apigateway/#lambda-proxy-integration
-type Response events.APIGatewayProxyResponse
 
-type JsonParser struct {
+type briefStruct struct {
 	Text  string `json:"text"`
 	Title string `json:"title"`
-	Anser string `json:"Anser:"`
+	Brief string `json:"brief"`
 }
+
+func responseJson(title string, text string, brief string) string {
+	res := briefStruct{
+		Title: title,
+		Text:  text,
+		Brief: brief,
+	}
+
+	marshaled, err := json.Marshal(res)
+	if err != nil {
+		fmt.Println(err)
+		return "Marshall error"
+	}
+
+	return string(marshaled)
+}
+
+func briefText(title string, text string) string {
+	s := summarize.NewFromString(title, text)
+
+	return strings.Join(s.KeyPoints(), " ")
+}
+
+type Response events.APIGatewayProxyResponse
 
 // Handler is our lambda handler invoked by the `lambda.Start` function call
 func Handler(request events.APIGatewayProxyRequest) (events.APIGatewayProxyResponse, error) {
-	s := []byte(request.Body)
-// 	s := []byte(`{
-//     "text": "Jim",
-//     "title": "33",
-//     "Anser:": "asnnaf"
-// }`)
-	var data JsonParser
-	json.Unmarshal(s, &data)
-	fmt.Println("data", data.Text)
-	fmt.Println("body", request.Body)
+	var data briefStruct
+	json.Unmarshal([]byte(request.Body), &data)
 
-	return events.APIGatewayProxyResponse{Body: request.Body, StatusCode: 200}, nil
+	res := responseJson(data.Title, data.Text, briefText(data.Title, data.Text))
+	fmt.Println("res: ", res)
+	return events.APIGatewayProxyResponse{Body: res, StatusCode: 200}, nil
 }
 
 func main() {
