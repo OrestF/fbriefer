@@ -1,9 +1,11 @@
 package main
 
 import (
-	"bytes"
-	"context"
 	"encoding/json"
+	"fmt"
+	"strings"
+
+	"github.com/urandom/text-summary/summarize"
 
 	"github.com/aws/aws-lambda-go/events"
 	"github.com/aws/aws-lambda-go/lambda"
@@ -13,31 +15,45 @@ import (
 // AWS Lambda Proxy Request functionality (default behavior)
 //
 // https://serverless.com/framework/docs/providers/aws/events/apigateway/#lambda-proxy-integration
+
+type briefStruct struct {
+	Text  string `json:"text"`
+	Title string `json:"title"`
+	Brief string `json:"brief"`
+}
+
+func responseJson(title string, text string, brief string) string {
+	res := briefStruct{
+		Title: title,
+		Text:  text,
+		Brief: brief,
+	}
+
+	marshaled, err := json.Marshal(res)
+	if err != nil {
+		fmt.Println(err)
+		return "Marshall error"
+	}
+
+	return string(marshaled)
+}
+
+func briefText(title string, text string) string {
+	s := summarize.NewFromString(title, text)
+
+	return strings.Join(s.KeyPoints(), " ")
+}
+
 type Response events.APIGatewayProxyResponse
 
 // Handler is our lambda handler invoked by the `lambda.Start` function call
-func Handler(ctx context.Context) (Response, error) {
-	var buf bytes.Buffer
+func Handler(request events.APIGatewayProxyRequest) (events.APIGatewayProxyResponse, error) {
+	var data briefStruct
+	json.Unmarshal([]byte(request.Body), &data)
 
-	body, err := json.Marshal(map[string]interface{}{
-		"message": "Go Serverless v1.0! Your function executed successfully!",
-	})
-	if err != nil {
-		return Response{StatusCode: 404}, err
-	}
-	json.HTMLEscape(&buf, body)
-
-	resp := Response{
-		StatusCode:      200,
-		IsBase64Encoded: false,
-		Body:            buf.String(),
-		Headers: map[string]string{
-			"Content-Type":           "application/json",
-			"X-MyCompany-Func-Reply": "hello-handler",
-		},
-	}
-
-	return resp, nil
+	res := responseJson(data.Title, data.Text, briefText(data.Title, data.Text))
+	fmt.Println("res: ", res)
+	return events.APIGatewayProxyResponse{Body: res, StatusCode: 200}, nil
 }
 
 func main() {
