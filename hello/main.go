@@ -15,16 +15,23 @@ import (
 type Response events.APIGatewayProxyResponse
 
 type JsonParser struct {
-	Title string `json:"title"`
 	Text  string `json:"text"`
+	Title string `json:"title"`
+	Anser string `json:"Anser:"`
 }
 
 // Handler is our lambda handler invoked by the `lambda.Start` function call
 func Handler(request events.APIGatewayProxyRequest) (events.APIGatewayProxyResponse, error) {
-	s := string(`request.Body`)
-	data := JsonParser{}
-	json.Unmarshal([]byte(s), data)
+	s := []byte(request.Body)
+// 	s := []byte(`{
+//     "text": "Jim",
+//     "title": "33",
+//     "Anser:": "asnnaf"
+// }`)
+	var data JsonParser
+	json.Unmarshal(s, &data)
 	fmt.Println("data", data.Text)
+	fmt.Println("body", request.Body)
 
 	return events.APIGatewayProxyResponse{Body: request.Body, StatusCode: 200}, nil
 }
