@@ -5,11 +5,11 @@ Resources:
   FBrieferFunction:
     Type: AWS::Serverless::Function
     Properties:
-      Handler: bin/hello
+      Handler: bin/brief
       Runtime: go1.x
       Events:
         Vote:
           Type: Api
           Properties:
             Path: /
-            Method: get
+            Method: post
